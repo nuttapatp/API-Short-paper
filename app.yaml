@@ -1,0 +1,30 @@
+#service: airpollution-service
+runtime: java17
+entrypoint: 'java -jar target/Airpollition-1.0-SNAPSHOT.jar'
+
+#automatic_scaling:
+#  target_cpu_utilization: 0.6
+#  min_instances: 2  # Increased min_instances to keep more instances ready
+#  max_instances: 15  # Increased max_instances for higher traffic spikes
+#  min_idle_instances: 2  # Having more idle instances can reduce startup delays
+#  max_idle_instances: 4  # Increased to provide a buffer for fluctuating traffic
+#  max_pending_latency: 15s  # More relaxed to reduce instance churn
+#  min_pending_latency: 15s  # More relaxed to reduce instance churn
+#
+#resources:
+#  cpu: 2
+#  memory_gb: 4
+#  disk_size_gb: 10
+
+
+#handlers:
+#  - url: /_ah/warmup
+#    script: this.field.WarmupController
+#    login: admin
+#
+#readiness_check:
+#  check_interval_sec: 5
+#  timeout_sec: 4
+#  failure_threshold: 2
+#  success_threshold: 2
+#  app_start_timeout_sec: 600  # Adjust this as needed

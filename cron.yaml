@@ -1,0 +1,4 @@
+cron:
+  - description: "Fetch AQI data every minute"
+    url: /fetch-and-notify
+    schedule: every 1 minutes
