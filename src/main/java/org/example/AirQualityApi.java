@@ -12,11 +12,11 @@ import java.net.http.HttpResponse;
 public class AirQualityApi {
     private final String apiKey;
 
-    public AirQualityApi() {
-        this.apiKey = System.getenv("GOOGLE_AIR_QUALITY_API_KEY");
-        if (this.apiKey == null || this.apiKey.isEmpty()) {
+    public AirQualityApi(String apiKey) {
+        if (apiKey == null || apiKey.isEmpty()) {
             throw new IllegalStateException("GOOGLE_AIR_QUALITY_API_KEY environment variable is not set");
         }
+        this.apiKey = apiKey;
     }
 
     public String fetchData(double latitude, double longitude) throws Exception {

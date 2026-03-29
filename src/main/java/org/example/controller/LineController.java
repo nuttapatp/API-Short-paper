@@ -6,6 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +14,12 @@ import org.springframework.web.bind.annotation.*;
 public class LineController {
 
     private static final Logger log = LoggerFactory.getLogger(LineController.class);
+
+    @Value("${LINE_ACCESS_TOKEN}")
+    private String lineToken;
+
+    @Value("${GOOGLE_AIR_QUALITY_API_KEY}")
+    private String airQualityApiKey;
 
     @GetMapping("/")
     public String healthCheck() {
@@ -44,7 +51,7 @@ public class LineController {
                         FirestoreService.saveUserLocation(userId, latitude, longitude);
                         log.info("Location saved for user {}: {}, {}", userId, latitude, longitude);
 
-                        Main.sendNotificationToUser(userId, "");
+                        Main.sendNotificationToUser(userId, "", lineToken, airQualityApiKey);
                     }
                 }
             }

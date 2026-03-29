@@ -39,13 +39,12 @@ public class Main {
         SpringApplication.run(Main.class, args);
     }
 
-    public static void fetchAndNotifyUsers(Location location) {
-        String lineToken = System.getenv("LINE_ACCESS_TOKEN");
+    public static void fetchAndNotifyUsers(Location location, String lineToken, String airQualityApiKey) {
         if (lineToken == null || lineToken.isEmpty()) {
             throw new IllegalStateException("LINE_ACCESS_TOKEN environment variable is not set");
         }
 
-        AirQualityApi api = new AirQualityApi();
+        AirQualityApi api = new AirQualityApi(airQualityApiKey);
         LineNotifier notifier = new LineNotifier(lineToken);
 
 
@@ -80,8 +79,7 @@ public class Main {
 
     }
 
-    public static void sendNotificationToUser(String userId, String message) {
-        String lineToken = System.getenv("LINE_ACCESS_TOKEN");
+    public static void sendNotificationToUser(String userId, String message, String lineToken, String airQualityApiKey) {
         if (lineToken == null || lineToken.isEmpty()) {
             throw new IllegalStateException("LINE_ACCESS_TOKEN environment variable is not set");
         }
@@ -90,7 +88,7 @@ public class Main {
             Location userLocation = FirestoreService.getUserLatestLocation(userId);
 
             if (userLocation != null) {
-                AirQualityApi api = new AirQualityApi();
+                AirQualityApi api = new AirQualityApi(airQualityApiKey);
                 LineNotifier notifier = new LineNotifier(lineToken);
 
                 String response = api.fetchData(userLocation.getLatitude(), userLocation.getLongitude());
@@ -121,10 +119,19 @@ public class Main {
                 // For local development, use the file path
                 String jsonKeyFilePath = System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
                 if (jsonKeyFilePath != null && !jsonKeyFilePath.isEmpty()) {
-                    FileInputStream serviceAccount = new FileInputStream(jsonKeyFilePath);
-                    credentials = GoogleCredentials.fromStream(serviceAccount);
+                    File credFile = new File(jsonKeyFilePath);
+                    if (credFile.exists()) {
+                        credentials = GoogleCredentials.fromStream(new FileInputStream(credFile));
+                    } else {
+                        log.warn("GOOGLE_APPLICATION_CREDENTIALS file not found at {}, falling back to classpath", jsonKeyFilePath);
+                        InputStream is = Main.class.getClassLoader().getResourceAsStream("line-storage-f4be7-firebase-adminsdk-fbsvc-de3eb5a3ff.json");
+                        if (is == null) throw new FileNotFoundException("Firebase credentials file not found in classpath.");
+                        credentials = GoogleCredentials.fromStream(is);
+                    }
                 } else {
-                    throw new FileNotFoundException("Firebase credentials are not properly configured.");
+                    InputStream is = Main.class.getClassLoader().getResourceAsStream("line-storage-f4be7-firebase-adminsdk-fbsvc-de3eb5a3ff.json");
+                    if (is == null) throw new FileNotFoundException("Firebase credentials are not properly configured.");
+                    credentials = GoogleCredentials.fromStream(is);
                 }
             }
 
