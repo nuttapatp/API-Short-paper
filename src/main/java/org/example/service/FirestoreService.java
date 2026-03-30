@@ -67,4 +67,9 @@ public class FirestoreService {
         }
         return null;
     }
+
+    public static void deleteUserHealthProfile(String userId) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        db.collection("userProfiles").document(userId).delete().get();
+    }
 }
