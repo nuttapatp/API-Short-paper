@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aqi-notification-service
+    runtime: java
+    buildCommand: mvn clean install -DskipTests
+    startCommand: java -jar target/Airpollition-1.0-SNAPSHOT.jar
+    envVars:
+      - key: LINE_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_AIR_QUALITY_API_KEY
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: FIREBASE_CREDENTIALS
+        sync: false
