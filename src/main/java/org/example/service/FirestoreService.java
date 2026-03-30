@@ -51,4 +51,20 @@ public class FirestoreService {
         data.put("longitude", longitude);
         db.collection("userLocations").document(userId).set(data).get();
     }
+
+    public static void saveUserHealthProfile(String userId, String healthProfile) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        Map<String, Object> data = new HashMap<>();
+        data.put("healthProfile", healthProfile);
+        db.collection("userProfiles").document(userId).set(data, SetOptions.merge()).get();
+    }
+
+    public static String getUserHealthProfile(String userId) throws ExecutionException, InterruptedException {
+        Firestore db = FirestoreClient.getFirestore();
+        DocumentSnapshot doc = db.collection("userProfiles").document(userId).get().get();
+        if (doc.exists() && doc.contains("healthProfile")) {
+            return doc.getString("healthProfile");
+        }
+        return null;
+    }
 }

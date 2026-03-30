@@ -1,6 +1,8 @@
 package org.example.controller;
 
+import org.example.LineNotifier;
 import org.example.Main;
+import org.example.service.ClaudeService;
 import org.example.service.FirestoreService;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -14,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class LineController {
 
     private static final Logger log = LoggerFactory.getLogger(LineController.class);
+
+    private final ClaudeService claudeService;
+
+    public LineController(ClaudeService claudeService) {
+        this.claudeService = claudeService;
+    }
 
     @Value("${LINE_ACCESS_TOKEN}")
     private String lineToken;
@@ -51,7 +59,15 @@ public class LineController {
                         FirestoreService.saveUserLocation(userId, latitude, longitude);
                         log.info("Location saved for user {}: {}, {}", userId, latitude, longitude);
 
-                        Main.sendNotificationToUser(userId, "", lineToken, airQualityApiKey);
+                        Main.sendNotificationToUser(userId, "", lineToken, airQualityApiKey, claudeService);
+
+                    } else if ("text".equals(message.getString("type"))) {
+                        String text = message.getString("text").trim();
+                        FirestoreService.saveUserHealthProfile(userId, text);
+                        log.info("Health profile saved for user {}: {}", userId, text);
+
+                        LineNotifier notifier = new LineNotifier(lineToken);
+                        notifier.sendLineMessageToUser("บันทึกข้อมูลสุขภาพของคุณแล้ว ✓\nจะแจ้งเตือนคุณภาพอากาศตามข้อมูลนี้", userId);
                     }
                 }
             }

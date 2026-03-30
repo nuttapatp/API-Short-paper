@@ -3,6 +3,7 @@ package org.example;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import org.example.model.Location;
+import org.example.service.ClaudeService;
 import org.example.service.FirestoreService;
 import com.google.auth.oauth2.GoogleCredentials;
 import org.example.utils.UtilityMethods;
@@ -39,7 +40,7 @@ public class Main {
         SpringApplication.run(Main.class, args);
     }
 
-    public static void fetchAndNotifyUsers(Location location, String lineToken, String airQualityApiKey) {
+    public static void fetchAndNotifyUsers(Location location, String lineToken, String airQualityApiKey, ClaudeService claudeService) {
         if (lineToken == null || lineToken.isEmpty()) {
             throw new IllegalStateException("LINE_ACCESS_TOKEN environment variable is not set");
         }
@@ -47,11 +48,7 @@ public class Main {
         AirQualityApi api = new AirQualityApi(airQualityApiKey);
         LineNotifier notifier = new LineNotifier(lineToken);
 
-
         try {
-            // Fetch data from Google Cloud API
-
-            // Fetch all user IDs from Firestore
             List<String> userIds = FirestoreService.fetchAllUserIds();
             log.info("Total user IDs fetched: {}", userIds.size());
 
@@ -65,8 +62,9 @@ public class Main {
                     double pm25Value = api.extractPM25Value(response);
                     int aqi = convertPM25ToAQI(pm25Value);
 
-                    String message = "Your current AQI is: " + aqi;
-                    log.info("Sending AQI {} to user {}", aqi, userId);
+                    String healthProfile = FirestoreService.getUserHealthProfile(userId);
+                    String message = claudeService.generateAqiNotification(aqi, healthProfile);
+                    log.info("Sending AI notification AQI {} to user {}", aqi, userId);
                     notifier.sendLineMessageToUser(message, userId);
                 } else {
                     log.warn("No location found for user {}", userId);
@@ -76,10 +74,9 @@ public class Main {
         } catch (Exception e) {
             log.error("Error in fetchAndNotifyUsers", e);
         }
-
     }
 
-    public static void sendNotificationToUser(String userId, String message, String lineToken, String airQualityApiKey) {
+    public static void sendNotificationToUser(String userId, String message, String lineToken, String airQualityApiKey, ClaudeService claudeService) {
         if (lineToken == null || lineToken.isEmpty()) {
             throw new IllegalStateException("LINE_ACCESS_TOKEN environment variable is not set");
         }
@@ -96,9 +93,11 @@ public class Main {
                 int aqi = convertPM25ToAQI(pm25Value);
                 log.info("AQI for user {}: {}", userId, aqi);
 
-                String notificationMessage = "Your current AQI is: " + aqi;
+                String healthProfile = FirestoreService.getUserHealthProfile(userId);
+                String notificationMessage = claudeService.generateAqiNotification(aqi, healthProfile);
+
                 notifier.sendLineMessageToUser(notificationMessage, userId);
-                log.info("Notification sent to user {}", userId);
+                log.info("AI notification sent to user {}", userId);
             } else {
                 log.warn("No location found for user {}", userId);
             }
