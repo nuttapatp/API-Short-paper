@@ -10,6 +10,7 @@ import org.example.utils.UtilityMethods;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ import java.util.List;
 import static org.example.utils.UtilityMethods.convertPM25ToAQI;
 
 @SpringBootApplication
+@EnableScheduling
 @ComponentScan(basePackages = {"org.example"})
 public class Main {
 
