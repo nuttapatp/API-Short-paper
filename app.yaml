@@ -1,6 +1,6 @@
 #service: airpollution-service
 runtime: java17
-entrypoint: 'java -jar target/Airpollition-1.0-SNAPSHOT.jar'
+entrypoint: 'java -jar target/Airpollution-1.0-SNAPSHOT.jar'
 
 #automatic_scaling:
 #  target_cpu_utilization: 0.6

@@ -7,6 +7,6 @@ RUN mvn clean install -DskipTests
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/Airpollition-1.0-SNAPSHOT.jar app.jar
+COPY --from=build /app/target/Airpollution-1.0-SNAPSHOT.jar app.jar
 EXPOSE 8082
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Dserver.port=${PORT:8082}", "-jar", "app.jar"]
