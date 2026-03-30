@@ -33,7 +33,13 @@ public class LineNotifier {
     }
 
     private String createJsonPayload(String message, String userId) {
-        return "{\"to\": \"" + userId + "\", \"messages\": [{\"type\": \"text\", \"text\": \"" + message + "\"}]}";
+        String escaped = message
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+        return "{\"to\": \"" + userId + "\", \"messages\": [{\"type\": \"text\", \"text\": \"" + escaped + "\"}]}";
     }
 
 
