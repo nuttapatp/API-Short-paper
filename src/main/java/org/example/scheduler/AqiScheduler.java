@@ -1,5 +1,6 @@
 package org.example.scheduler;
 
+import org.example.controller.SseController;
 import org.example.service.AqiAlertService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,9 +13,11 @@ public class AqiScheduler {
     private static final Logger log = LoggerFactory.getLogger(AqiScheduler.class);
 
     private final AqiAlertService aqiAlertService;
+    private final SseController sseController;
 
-    public AqiScheduler(AqiAlertService aqiAlertService) {
+    public AqiScheduler(AqiAlertService aqiAlertService, SseController sseController) {
         this.aqiAlertService = aqiAlertService;
+        this.sseController = sseController;
     }
 
     // Every hour
@@ -22,5 +25,6 @@ public class AqiScheduler {
     public void runHourlyAqiCheck() {
         log.info("Hourly AQI check triggered");
         aqiAlertService.checkAndAlertAllUsers();
+        sseController.triggerBroadcast();
     }
 }
