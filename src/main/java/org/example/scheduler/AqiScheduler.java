@@ -20,11 +20,11 @@ public class AqiScheduler {
         this.sseController = sseController;
     }
 
-    // Every hour
-    @Scheduled(cron = "0 0 * * * *")
+    // Every day at 09:00, 12:00, 15:00, 18:00, 21:00 (Bangkok time)
+    @Scheduled(cron = "0 0 9,12,15,18,21 * * *", zone = "Asia/Bangkok")
     public void runHourlyAqiCheck() {
-        log.info("Hourly AQI check triggered");
+        log.info("Scheduled AQI check (fixed times) triggered");
         aqiAlertService.checkAndAlertAllUsers();
         sseController.triggerBroadcast();
-    }
+}
 }
