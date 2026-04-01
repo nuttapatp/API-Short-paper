@@ -6,6 +6,7 @@ import org.example.Main;
 import org.example.model.Location;
 import org.example.service.ClaudeService;
 import org.example.service.FirestoreService;
+import org.example.service.BigQueryService;
 import org.example.service.IntentService;
 import org.example.service.RateLimitService;
 import org.example.utils.UtilityMethods;
@@ -25,11 +26,14 @@ public class LineController {
     private final ClaudeService claudeService;
     private final IntentService intentService;
     private final RateLimitService rateLimitService;
+    private final BigQueryService bigQueryService;
 
-    public LineController(ClaudeService claudeService, IntentService intentService, RateLimitService rateLimitService) {
+    public LineController(ClaudeService claudeService, IntentService intentService,
+                          RateLimitService rateLimitService, BigQueryService bigQueryService) {
         this.claudeService = claudeService;
         this.intentService = intentService;
         this.rateLimitService = rateLimitService;
+        this.bigQueryService = bigQueryService;
     }
 
     @Value("${LINE_ACCESS_TOKEN}")
@@ -107,8 +111,16 @@ public class LineController {
                     notifier.sendLineMessageToUser(reply, userId);
                 }
             }
-            case AQI_FORECAST -> notifier.sendLineMessageToUser(
-                    "ขณะนี้ยังไม่มีข้อมูล forecast ครับ\nสามารถส่ง Location เพื่อเช็ค AQI ตอนนี้ได้เลย 📍", userId);
+            case AQI_FORECAST -> {
+                Location location = FirestoreService.getUserLatestLocation(userId);
+                String city = location != null
+                        ? resolveCity(location.getLatitude(), location.getLongitude())
+                        : "Bangkok";
+                var recent = bigQueryService.getRecentAqi(city, 24);
+                var forecast = bigQueryService.getForecastAqi(city);
+                String analysis = claudeService.analyzeForecast(city, recent, forecast);
+                notifier.sendLineMessageToUser(analysis, userId);
+            }
 
             case BEST_DAY -> notifier.sendLineMessageToUser(
                     "ขณะนี้ยังไม่มีข้อมูลรายสัปดาห์ครับ\nสามารถส่ง Location เพื่อเช็ค AQI ตอนนี้ได้เลย 📍", userId);
@@ -125,6 +137,13 @@ public class LineController {
             }
             default -> notifier.sendLineMessageToUser(getHelpMessage(), userId);
         }
+    }
+
+    private String resolveCity(double lat, double lon) {
+        if (lat >= 17.0) return "Chiang Mai";
+        if (lat <= 9.0) return "Phuket";
+        if (lon >= 101.0) return "Chonburi";
+        return "Bangkok";
     }
 
     private String getWelcomeMessage() {

@@ -5,10 +5,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import org.example.service.BigQueryService.AqiRecord;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 
 @Service
 public class ClaudeService {
@@ -94,6 +97,58 @@ public class ClaudeService {
     private String buildFallbackMessage(int aqi) {
         if (aqi < 0) return "ไม่สามารถดึงข้อมูลคุณภาพอากาศได้ในขณะนี้";
         return String.format("คุณภาพอากาศ AQI: %d (%s)\nกรุณาระวังสุขภาพด้วยนะครับ", aqi, getAqiLevel(aqi));
+    }
+
+    public String analyzeForecast(String city, List<AqiRecord> recent, List<AqiRecord> forecast) {
+        try {
+            StringBuilder sb = new StringBuilder();
+            sb.append("วิเคราะห์คุณภาพอากาศของ").append(city).append("\n\n");
+
+            if (!recent.isEmpty()) {
+                sb.append("ข้อมูลย้อนหลัง 24 ชั่วโมง:\n");
+                recent.forEach(r -> sb.append("- AQI ").append(r.aqi())
+                        .append(" (").append(r.timestamp()).append(")\n"));
+            }
+
+            if (!forecast.isEmpty()) {
+                sb.append("\nข้อมูล forecast:\n");
+                forecast.stream().limit(8).forEach(r -> sb.append("- AQI ").append(r.aqi())
+                        .append(" (").append(r.timestamp()).append(")\n"));
+            }
+
+            sb.append("\nสรุปแนวโน้มคุณภาพอากาศเป็นภาษาไทย ไม่เกิน 5 บรรทัด พร้อมคำแนะนำ");
+
+            String prompt = sb.toString();
+            String requestBody = String.format("""
+                    {
+                      "model": "claude-haiku-4-5-20251001",
+                      "max_tokens": 400,
+                      "messages": [
+                        {"role": "user", "content": %s}
+                      ]
+                    }
+                    """, toJsonString(prompt));
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(API_URL))
+                    .header("Content-Type", "application/json")
+                    .header("x-api-key", apiKey)
+                    .header("anthropic-version", "2023-06-01")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                return extractTextFromResponse(response.body());
+            } else {
+                log.error("Claude API error {}: {}", response.statusCode(), response.body());
+                return "ไม่สามารถวิเคราะห์ข้อมูลได้ในขณะนี้";
+            }
+        } catch (Exception e) {
+            log.error("Claude forecast analysis error", e);
+            return "ไม่สามารถวิเคราะห์ข้อมูลได้ในขณะนี้";
+        }
     }
 
     private String getAqiLevel(int aqi) {

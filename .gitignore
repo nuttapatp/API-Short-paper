@@ -41,4 +41,8 @@ build/
 .env
 *-adminsdk-*.json
 *firebase-adminsdk*.json
+src/main/resources/*firebase*.json
+src/main/resources/*adminsdk*.json
+src/main/resources/*air*.json
+
 line-storage*.json
