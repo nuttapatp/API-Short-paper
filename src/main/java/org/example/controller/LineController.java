@@ -7,6 +7,7 @@ import org.example.model.Location;
 import org.example.service.ClaudeService;
 import org.example.service.FirestoreService;
 import org.example.service.IntentService;
+import org.example.service.RateLimitService;
 import org.example.utils.UtilityMethods;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -23,10 +24,12 @@ public class LineController {
 
     private final ClaudeService claudeService;
     private final IntentService intentService;
+    private final RateLimitService rateLimitService;
 
-    public LineController(ClaudeService claudeService, IntentService intentService) {
+    public LineController(ClaudeService claudeService, IntentService intentService, RateLimitService rateLimitService) {
         this.claudeService = claudeService;
         this.intentService = intentService;
+        this.rateLimitService = rateLimitService;
     }
 
     @Value("${LINE_ACCESS_TOKEN}")
@@ -50,6 +53,11 @@ public class LineController {
                 JSONObject event = events.getJSONObject(i);
                 String eventType = event.getString("type");
                 String userId = event.getJSONObject("source").getString("userId");
+
+                if (!rateLimitService.isAllowed(userId)) {
+                    log.warn("Rate limit hit for user {}, skipping event", userId);
+                    continue;
+                }
 
                 if ("follow".equals(eventType)) {
                     FirestoreService.saveUserId(userId);
