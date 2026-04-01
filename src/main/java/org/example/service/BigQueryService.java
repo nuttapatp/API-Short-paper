@@ -24,8 +24,11 @@ public class BigQueryService {
 
     public BigQueryService(@Value("${BIGQUERY_CREDENTIALS:}") String credentialsJson) throws IOException {
         InputStream is;
-        if (credentialsJson != null && !credentialsJson.isBlank()) {
-            // Render: use JSON string from env var
+        if (credentialsJson != null && credentialsJson.startsWith("/")) {
+            // Render Secret File: value is a file path e.g. /etc/secrets/bigquery.json
+            is = new java.io.FileInputStream(credentialsJson);
+        } else if (credentialsJson != null && !credentialsJson.isBlank()) {
+            // Render env var: value is JSON string content
             is = new ByteArrayInputStream(credentialsJson.getBytes());
         } else {
             // Local: use file from classpath
