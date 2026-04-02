@@ -6,45 +6,54 @@ Real-time air quality monitoring backend — delivers AI-generated health alerts
 
 ---
 
-## Architecture
+## System Architecture
+
+This service is part of a 3-repo microservice system:
 
 ```
-┌─────────────┐    location/text     ┌──────────────────────────────────────┐
-│  LINE App   │ ──────────────────► │           Spring Boot (8082)          │
-└─────────────┘                     │                                        │
-                                    │  ┌─────────────┐  ┌────────────────┐  │
-                                    │  │LineController│  │ AqiScheduler   │  │
-                                    │  │ (webhook)   │  │ (hourly cron)  │  │
-                                    │  └──────┬──────┘  └───────┬────────┘  │
-                                    │         │                  │           │
-                                    │  ┌──────▼──────────────────▼────────┐  │
-                                    │  │           Services                │  │
-                                    │  │  IntentService  (Claude AI)       │  │
-                                    │  │  ClaudeService  (Claude AI)       │  │
-                                    │  │  AqiAlertService                  │  │
-                                    │  │  SseBroadcastService              │  │
-                                    │  │  RateLimitService                 │  │
-                                    │  └──────┬───────────────┬────────────┘  │
-                                    └─────────┼───────────────┼───────────────┘
-                                              │               │
-                          ┌───────────────────┼───┐    ┌──────▼──────────────┐
-                          │  External APIs    │   │    │  Firebase Firestore  │
-                          │                  ▼   │    │  - users             │
-                          │  Google Air Quality  │    │  - locations         │
-                          │  Claude AI (Haiku)   │    │  - userProfiles      │
-                          │  LINE Messaging API  │    └─────────────────────┘
-                          └──────────────────────┘
-                                              │
-                                    ┌─────────▼──────────┐
-                                    │   SSE Stream        │
-                                    │  /api/v1/sse/       │
-                                    │  aqi-stream         │
-                                    └─────────┬───────────┘
-                                              │
-                                    ┌─────────▼──────────┐
-                                    │  Next.js Dashboard  │
-                                    │  (Leaflet map)      │
-                                    └────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                     AQI-Short-paper (8080)                       │
+│              Data Pipeline — OpenWeatherMap → BigQuery           │
+│   Hourly cron: fetches Bangkok + Chiang Mai AQI → stores to BQ  │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ BigQuery (currentaqi, forecastaqi)
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     API-Short-paper (8082)  ◄── LINE webhook     │
+│                                                                   │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
+│  │LineController│  │ForecastCtrl  │  │    AqiScheduler        │  │
+│  │ (webhook)   │  │GET /forecast │  │    (hourly cron)       │  │
+│  └──────┬──────┘  └──────┬───────┘  └───────────┬────────────┘  │
+│         │                │                        │               │
+│  ┌──────▼────────────────▼────────────────────────▼────────────┐ │
+│  │                        Services                              │ │
+│  │  IntentService   — Claude AI intent classification          │ │
+│  │  ClaudeService   — AQI notifications + forecast analysis    │ │
+│  │  BigQueryService — reads historical + forecast AQI          │ │
+│  │  AqiAlertService — proactive hourly alerts                  │ │
+│  │  SseBroadcastService — SSE push to dashboard                │ │
+│  │  RateLimitService — 10 req/min per user                     │ │
+│  └──────┬───────────────────────────────┬─────────────────────┘ │
+└─────────┼───────────────────────────────┼───────────────────────┘
+          │                               │
+┌─────────▼──────────┐       ┌────────────▼──────────────┐
+│  Firebase Firestore│       │      External APIs          │
+│  - users           │       │  Google Air Quality API     │
+│  - locations       │       │  Claude AI (Haiku)          │
+│  - userProfiles    │       │  LINE Messaging API         │
+└────────────────────┘       └─────────────────────────────┘
+          │
+┌─────────▼──────────┐
+│   SSE Stream        │
+│  /api/v1/sse/       │
+│  aqi-stream         │
+└─────────┬───────────┘
+          │
+┌─────────▼──────────────────┐
+│  aqi-map-short-paper (3000) │
+│  Next.js + Leaflet map      │
+└─────────────────────────────┘
 ```
 
 ---
@@ -54,10 +63,11 @@ Real-time air quality monitoring backend — delivers AI-generated health alerts
 | Layer | Technology |
 |---|---|
 | Backend | Spring Boot 2.7.18, Java 17 |
-| Database | Firebase Firestore |
-| AI | Claude claude-haiku-4-5-20251001 (Anthropic) |
+| Database | Firebase Firestore, Google BigQuery |
+| AI | Claude Haiku 4.5 (Anthropic) |
 | Messaging | LINE Messaging API |
 | Air Quality | Google Air Quality API |
+| Data Pipeline | OpenWeatherMap API (via AQI-Short-paper) |
 | Frontend | Next.js 16, Leaflet.js, Tailwind CSS |
 | CI/CD | GitHub Actions |
 | Deployment | Render (Docker) |
@@ -68,7 +78,8 @@ Real-time air quality monitoring backend — delivers AI-generated health alerts
 ## Features
 
 - **LINE Bot** — Users send location via LINE, receive AI-generated AQI health alerts personalized to their health profile
-- **Intent Detection** — Claude AI classifies user messages into 6 intents (AQI_NOW, SET_PROFILE, DELETE_PROFILE, etc.)
+- **Intent Detection** — Claude AI classifies user messages into 6 intents (AQI_NOW, AQI_FORECAST, SET_PROFILE, DELETE_PROFILE, etc.)
+- **AQI Forecast** — Fetches 24h history + forecast from BigQuery, Claude analyzes trend and gives Thai-language summary
 - **Proactive Alerts** — Hourly cron job alerts users when AQI exceeds threshold (150 general, 100 sensitive groups)
 - **Live Dashboard** — SSE-powered real-time map showing all users' AQI readings
 - **Health Profiles** — Users can save health conditions (asthma, allergies) for personalized Claude responses
@@ -84,6 +95,7 @@ Real-time air quality monitoring backend — delivers AI-generated health alerts
 | GET | `/` | Health check |
 | POST | `/webhook` | LINE webhook receiver |
 | GET | `/api/v1/sse/aqi-stream` | SSE stream (real-time AQI) |
+| GET | `/api/v1/forecast/{city}` | AI forecast analysis for city (Bangkok, Chiang Mai, Phuket, Chonburi) |
 | GET | `/actuator/health` | Spring Actuator health |
 
 ### Protected (requires `X-API-Key` header)
@@ -100,10 +112,11 @@ Real-time air quality monitoring backend — delivers AI-generated health alerts
 |---|---|
 | `LINE_ACCESS_TOKEN` | LINE Messaging API channel access token |
 | `GOOGLE_AIR_QUALITY_API_KEY` | Google Air Quality API key |
-| `CLAUDE_API_KEY` | Anthropic Claude API key |
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key |
 | `INTERNAL_API_KEY` | API key for protected endpoints |
 | `FRONTEND_URL` | Comma-separated allowed CORS origins |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Firebase service account JSON |
+| `BIGQUERY_CREDENTIALS` | Path to BigQuery service account JSON (e.g. `/etc/secrets/bigquery.json`) |
 
 ---
 
