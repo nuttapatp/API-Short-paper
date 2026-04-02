@@ -66,7 +66,6 @@ public class ClaudeService {
         // Parse: {"content":[{"type":"text","text":"..."}],...}
         int textStart = responseBody.indexOf("\"text\":\"") + 8;
         if (textStart <= 8) return buildFallbackMessage(-1);
-        // Find closing quote, skipping escaped quotes
         int i = textStart;
         StringBuilder sb = new StringBuilder();
         while (i < responseBody.length()) {
@@ -76,6 +75,13 @@ public class ClaudeService {
                 if (next == 'n') { sb.append('\n'); i += 2; continue; }
                 if (next == '"') { sb.append('"'); i += 2; continue; }
                 if (next == '\\') { sb.append('\\'); i += 2; continue; }
+                if (next == 'u' && i + 5 < responseBody.length()) {
+                    String hex = responseBody.substring(i + 2, i + 6);
+                    try {
+                        sb.append((char) Integer.parseInt(hex, 16));
+                        i += 6; continue;
+                    } catch (NumberFormatException ignored) {}
+                }
             } else if (c == '"') {
                 break;
             } else {
