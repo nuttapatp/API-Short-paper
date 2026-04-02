@@ -1,5 +1,6 @@
 package org.example.service;
 
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,33 +64,15 @@ public class ClaudeService {
     }
 
     private String extractTextFromResponse(String responseBody) {
-        // Parse: {"content":[{"type":"text","text":"..."}],...}
-        int textStart = responseBody.indexOf("\"text\":\"") + 8;
-        if (textStart <= 8) return buildFallbackMessage(-1);
-        int i = textStart;
-        StringBuilder sb = new StringBuilder();
-        while (i < responseBody.length()) {
-            char c = responseBody.charAt(i);
-            if (c == '\\' && i + 1 < responseBody.length()) {
-                char next = responseBody.charAt(i + 1);
-                if (next == 'n') { sb.append('\n'); i += 2; continue; }
-                if (next == '"') { sb.append('"'); i += 2; continue; }
-                if (next == '\\') { sb.append('\\'); i += 2; continue; }
-                if (next == 'u' && i + 5 < responseBody.length()) {
-                    String hex = responseBody.substring(i + 2, i + 6);
-                    try {
-                        sb.append((char) Integer.parseInt(hex, 16));
-                        i += 6; continue;
-                    } catch (NumberFormatException ignored) {}
-                }
-            } else if (c == '"') {
-                break;
-            } else {
-                sb.append(c);
-            }
-            i++;
+        try {
+            JSONObject json = new JSONObject(responseBody);
+            return json.getJSONArray("content")
+                    .getJSONObject(0)
+                    .getString("text");
+        } catch (Exception e) {
+            log.error("Failed to parse Claude response", e);
+            return buildFallbackMessage(-1);
         }
-        return sb.isEmpty() ? buildFallbackMessage(-1) : sb.toString();
     }
 
     private String buildPrompt(int aqi, String healthProfile) {

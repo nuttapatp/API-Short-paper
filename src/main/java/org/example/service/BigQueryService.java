@@ -48,28 +48,33 @@ public class BigQueryService {
     public List<AqiRecord> getRecentAqi(String city, int hours) {
         String query = String.format(
                 "SELECT city, aqi, timestamp FROM `%s.%s.currentaqi` " +
-                "WHERE city = '%s' AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR) " +
+                "WHERE city = @city AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL %d HOUR) " +
                 "ORDER BY timestamp DESC LIMIT 50",
-                PROJECT, DATASET, city, hours);
+                PROJECT, DATASET, hours);
 
-        return runQuery(query);
+        QueryJobConfiguration config = QueryJobConfiguration.newBuilder(query)
+                .addNamedParameter("city", QueryParameterValue.string(city))
+                .build();
+        return runQuery(config);
     }
 
     // Returns forecast records for a city
     public List<AqiRecord> getForecastAqi(String city) {
         String query = String.format(
                 "SELECT city, aqi, timestamp FROM `%s.%s.forecastaqi` " +
-                "WHERE city = '%s' AND timestamp >= CURRENT_TIMESTAMP() " +
+                "WHERE city = @city AND timestamp >= CURRENT_TIMESTAMP() " +
                 "ORDER BY timestamp ASC LIMIT 24",
-                PROJECT, DATASET, city);
+                PROJECT, DATASET);
 
-        return runQuery(query);
+        QueryJobConfiguration config = QueryJobConfiguration.newBuilder(query)
+                .addNamedParameter("city", QueryParameterValue.string(city))
+                .build();
+        return runQuery(config);
     }
 
-    private List<AqiRecord> runQuery(String query) {
+    private List<AqiRecord> runQuery(QueryJobConfiguration config) {
         List<AqiRecord> results = new ArrayList<>();
         try {
-            QueryJobConfiguration config = QueryJobConfiguration.newBuilder(query).build();
             TableResult result = bigQuery.query(config);
             for (FieldValueList row : result.iterateAll()) {
                 String city = row.get("city").getStringValue();
