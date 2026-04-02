@@ -65,13 +65,25 @@ public class ClaudeService {
     private String extractTextFromResponse(String responseBody) {
         // Parse: {"content":[{"type":"text","text":"..."}],...}
         int textStart = responseBody.indexOf("\"text\":\"") + 8;
-        int textEnd = responseBody.indexOf("\"", textStart);
-        if (textStart > 8 && textEnd > textStart) {
-            return responseBody.substring(textStart, textEnd)
-                    .replace("\\n", "\n")
-                    .replace("\\\"", "\"");
+        if (textStart <= 8) return buildFallbackMessage(-1);
+        // Find closing quote, skipping escaped quotes
+        int i = textStart;
+        StringBuilder sb = new StringBuilder();
+        while (i < responseBody.length()) {
+            char c = responseBody.charAt(i);
+            if (c == '\\' && i + 1 < responseBody.length()) {
+                char next = responseBody.charAt(i + 1);
+                if (next == 'n') { sb.append('\n'); i += 2; continue; }
+                if (next == '"') { sb.append('"'); i += 2; continue; }
+                if (next == '\\') { sb.append('\\'); i += 2; continue; }
+            } else if (c == '"') {
+                break;
+            } else {
+                sb.append(c);
+            }
+            i++;
         }
-        return buildFallbackMessage(-1);
+        return sb.isEmpty() ? buildFallbackMessage(-1) : sb.toString();
     }
 
     private String buildPrompt(int aqi, String healthProfile) {
@@ -116,7 +128,7 @@ public class ClaudeService {
                         .append(" (").append(r.timestamp()).append(")\n"));
             }
 
-            sb.append("\nสรุปแนวโน้มคุณภาพอากาศเป็นภาษาไทย ไม่เกิน 5 บรรทัด พร้อมคำแนะนำ");
+            sb.append("\nสรุปแนวโน้มคุณภาพอากาศเป็นภาษาไทย ไม่เกิน 5 บรรทัด พร้อมคำแนะนำ ห้ามใช้ markdown เช่น # หรือ ** ใช้ข้อความธรรมดาเท่านั้น");
 
             String prompt = sb.toString();
             String requestBody = String.format("""
