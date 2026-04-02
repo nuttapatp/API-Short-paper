@@ -140,10 +140,12 @@ public class LineController {
     }
 
     private String resolveCity(double lat, double lon) {
-        if (lat >= 17.0) return "Chiang Mai";
-        if (lat <= 9.0) return "Phuket";
-        if (lon >= 101.0) return "Chonburi";
-        return "Bangkok";
+        // Bounding boxes for supported cities
+        if (lat >= 18.0 && lat <= 20.5 && lon >= 97.5 && lon <= 100.5) return "Chiang Mai";
+        if (lat >= 7.5  && lat <= 9.5  && lon >= 97.5 && lon <= 99.0)  return "Phuket";
+        if (lat >= 12.5 && lat <= 13.5 && lon >= 100.7 && lon <= 102.0) return "Chonburi";
+        if (lat >= 13.0 && lat <= 14.5 && lon >= 99.5 && lon <= 101.5)  return "Bangkok";
+        return "Bangkok"; // default
     }
 
     private String getWelcomeMessage() {
